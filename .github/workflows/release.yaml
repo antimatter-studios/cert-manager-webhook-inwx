@@ -1,0 +1,80 @@
+name: Release a new container image version
+
+on:
+  push:
+    branches: ['main']
+    tags: [ 'v*' ]
+env:
+  REGISTRY_IMAGE: ghcr.io/${{ github.repository }}
+
+jobs:
+  test:
+    uses: ./.github/workflows/test.yaml
+    secrets: inherit
+  build:
+    needs: [test]
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - platform: linux/amd64
+          runner: ubuntu-24.04
+        - platform: linux/arm64
+          runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    outputs:
+      linux-amd64: ${{ steps.digest.outputs.linux-amd64 }}
+      linux-arm64: ${{ steps.digest.outputs.linux-arm64 }}
+    steps:
+    - name: Checkout the repo
+      uses: actions/checkout@v6
+    - name: Set up buildx
+      uses: docker/setup-buildx-action@v3
+    - name: Login to ghcr
+      uses: docker/login-action@v2
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    - name: Build and push Docker image
+      id: build
+      uses: docker/build-push-action@v5
+      with:
+        context: "."
+        file: Dockerfile
+        platforms: ${{ matrix.platform }}
+        tags: ${{ env.REGISTRY_IMAGE }}
+        labels: |
+          org.opencontainers.image.description="cert-manager DNS01 webhook solver for INWX"
+        outputs: type=image,push-by-digest=true,name-canonical=true,push=true
+    - name: Export digest
+      id: digest
+      run: |
+        platform=${{ matrix.platform }}
+        printf "%s=%s" "${platform//\//-}" "${{ steps.build.outputs.digest }}" >> "$GITHUB_OUTPUT"
+
+  merge:
+    runs-on: ubuntu-latest
+    needs: [build]
+    permissions:
+      contents: read
+      packages: write
+    steps:
+    - id: version
+      uses: orbit-online/image-version@v0.9.1
+    - name: Set up buildx
+      uses: docker/setup-buildx-action@v3
+    - name: Login to ghcr
+      uses: docker/login-action@v2
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    - name: Create manifest list and push
+      run: |
+        docker buildx imagetools create -t ${{ env.REGISTRY_IMAGE }}:${{ steps.version.outputs.version }} \
+          ${{ env.REGISTRY_IMAGE }}@${{ needs.build.outputs.linux-amd64 }} \
+          ${{ env.REGISTRY_IMAGE }}@${{ needs.build.outputs.linux-arm64 }}

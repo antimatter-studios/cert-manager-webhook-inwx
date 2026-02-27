@@ -1,0 +1,31 @@
+groupName: inwx.webhook.cert-manager.io
+
+certManager:
+  namespace: cert-manager
+  serviceAccountName: cert-manager
+
+image:
+  repository: ghcr.io/antimatter-studios/cert-manager-webhook-inwx
+  tag: latest
+  pullPolicy: IfNotPresent
+
+nameOverride: ""
+fullnameOverride: ""
+
+service:
+  type: ClusterIP
+  port: 443
+
+inwx:
+  username: ""
+  password: ""
+  sandbox: false
+  # existingSecret: ""
+
+resources: {}
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
