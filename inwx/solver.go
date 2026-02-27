@@ -14,7 +14,7 @@ import (
 	"k8s.io/client-go/rest"
 )
 
-const defaultTTL = 60
+const defaultTTL = 300
 
 type INWXDNSSolver struct {
 	client AbstractClientWrapper

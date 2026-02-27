@@ -38,7 +38,7 @@ func TestPresent(t *testing.T) {
 	assert.Equal(t, "_acme-challenge", (*recs)[0].Name)
 	assert.Equal(t, "TXT", (*recs)[0].Type)
 	assert.Equal(t, "test-challenge-token", (*recs)[0].Content)
-	assert.Equal(t, 60, (*recs)[0].TTL)
+	assert.Equal(t, 300, (*recs)[0].TTL)
 }
 
 func TestPresentSubdomain(t *testing.T) {
