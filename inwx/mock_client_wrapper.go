@@ -2,8 +2,6 @@ package inwx
 
 import (
 	"fmt"
-	"maps"
-	"slices"
 	"strconv"
 
 	goinwx "github.com/nrdcg/goinwx"
@@ -50,7 +48,10 @@ func (w *MockClientWrapper) getRecords(domain string) (*[]goinwx.NameserverRecor
 }
 
 func (w *MockClientWrapper) getZones() (*[]string, error) {
-	zones := slices.Collect(maps.Keys(w.db))
+	zones := make([]string, 0, len(w.db))
+	for zone := range w.db {
+		zones = append(zones, zone)
+	}
 	return &zones, nil
 }
 
