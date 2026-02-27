@@ -78,3 +78,27 @@ jobs:
         docker buildx imagetools create -t ${{ env.REGISTRY_IMAGE }}:${{ steps.version.outputs.version }} \
           ${{ env.REGISTRY_IMAGE }}@${{ needs.build.outputs.linux-amd64 }} \
           ${{ env.REGISTRY_IMAGE }}@${{ needs.build.outputs.linux-arm64 }}
+
+  helm-chart:
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    needs: [test]
+    permissions:
+      contents: read
+      packages: write
+    steps:
+    - name: Checkout the repo
+      uses: actions/checkout@v6
+    - name: Install Helm
+      uses: azure/setup-helm@v4
+    - name: Login to ghcr
+      run: echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u ${{ github.actor }} --password-stdin
+    - name: Set chart version from tag
+      run: |
+        VERSION="${GITHUB_REF_NAME#v}"
+        sed -i "s/^version:.*/version: ${VERSION}/" deploy/cert-manager-webhook-inwx/Chart.yaml
+        sed -i "s/^appVersion:.*/appVersion: \"${VERSION}\"/" deploy/cert-manager-webhook-inwx/Chart.yaml
+    - name: Package Helm chart
+      run: helm package deploy/cert-manager-webhook-inwx -d _out
+    - name: Push Helm chart to OCI registry
+      run: helm push _out/cert-manager-webhook-inwx-*.tgz oci://ghcr.io/antimatter-studios/charts
